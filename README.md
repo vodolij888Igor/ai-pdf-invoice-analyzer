@@ -176,12 +176,42 @@ When analysis succeeds, the response matches the API schema (values reflect the 
 3. Under **Body**, choose **raw** and **JSON**, then paste a payload with `document_name` and `invoice_text` (same structure as the cURL example).
 4. Click **Send**. In the response, verify key fields for payment workflows: `invoice_number`, `vendor_name`, `total_amount`, `due_date`, `category`, `priority`, `summary`, and `recommended_action`.
 
-## Current Limitations
+## Architecture
 
-- Requires a valid `OPENAI_API_KEY` (no local/offline model)
-- No PDF upload endpoint yet
-- No real PDF text extraction pipeline yet
-- Category and priority are guided by the model and normalized to allowed values when needed
+- FastAPI app exposes a `POST /analyze-invoice-text` endpoint.
+- Pydantic schemas validate request and response data.
+- Service layer handles OpenAI invoice analysis logic.
+- Environment variables are loaded from `.env`.
+- Swagger UI provides interactive API testing.
+- Tests mock the AI layer and verify API behavior safely.
+- The current version simulates extracted PDF invoice text through JSON input.
+
+```text
+Client / Swagger / Postman
+        ↓
+FastAPI route: POST /analyze-invoice-text
+        ↓
+Pydantic validation
+        ↓
+Invoice analysis service layer
+        ↓
+OpenAI API
+        ↓
+JSON response: invoice_number, vendor_name, total_amount, due_date, category, priority, recommended_action
+```
+
+## Limitations
+
+- This is a backend portfolio project, not a complete invoice management platform yet.
+- It does not upload PDF files yet.
+- It does not extract text from real PDF files yet.
+- It does not store analyzed invoices in a database yet.
+- It does not include authentication yet.
+- It does not include a frontend dashboard yet.
+- It is designed as a clean local API demo.
+- Requires a valid `OPENAI_API_KEY` (no local/offline model).
+- Category and priority are guided by the model and normalized to allowed values when needed.
+- Future versions could add PDF upload, OCR/text extraction, database storage, authentication, deployment, scheduled invoice processing, and a frontend dashboard.
 
 ## Future Improvements
 
