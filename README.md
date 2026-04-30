@@ -130,6 +130,52 @@ The screenshot below shows a successful POST /analyze-invoice-text request in Fa
 
 ![Swagger UI successful invoice analysis response](docs/images/swagger-invoice-analysis-code-200.png)
 
+## API Usage Examples
+
+**Scenario:** A company receives invoice PDFs from vendors. Text is extracted upstream (for example with a PDF library or OCR pipeline). That extracted text is sent to this API so finance teams obtain **structured payment-ready fields**—amounts, parties, due dates, and suggested actions—in a consistent JSON shape.
+
+### cURL (`POST /analyze-invoice-text`)
+
+With the server running locally (`uvicorn app.main:app --reload`), send a JSON body that includes `document_name` and `invoice_text`:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/analyze-invoice-text" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "document_name": "invoice_001.pdf",
+  "invoice_text": "Invoice #INV-1001. Vendor: ABC Supplies. Customer: Northwind LLC. Total: $1,245.50. Due date: 2026-05-15. Items: Office chairs, desks, shipping."
+}'
+```
+
+Ensure `OPENAI_API_KEY` is configured; otherwise the API responds with **503**.
+
+### Example successful JSON response
+
+When analysis succeeds, the response matches the API schema (values reflect the model’s interpretation of your text):
+
+```json
+{
+  "document_name": "invoice_001.pdf",
+  "invoice_number": "INV-1001",
+  "vendor_name": "ABC Supplies",
+  "customer_name": "Northwind LLC",
+  "total_amount": 1245.50,
+  "currency": "USD",
+  "due_date": "2026-05-15",
+  "category": "office_supplies",
+  "priority": "medium",
+  "summary": "Invoice from ABC Supplies to Northwind LLC for office furniture and related charges.",
+  "recommended_action": "Review and schedule payment before the due date."
+}
+```
+
+### Postman
+
+1. Create a new request with **Method:** `POST` and **URL:** `http://127.0.0.1:8000/analyze-invoice-text`.
+2. Under **Headers**, add `Content-Type` with value `application/json`.
+3. Under **Body**, choose **raw** and **JSON**, then paste a payload with `document_name` and `invoice_text` (same structure as the cURL example).
+4. Click **Send**. In the response, verify key fields for payment workflows: `invoice_number`, `vendor_name`, `total_amount`, `due_date`, `category`, `priority`, `summary`, and `recommended_action`.
+
 ## Current Limitations
 
 - Requires a valid `OPENAI_API_KEY` (no local/offline model)
