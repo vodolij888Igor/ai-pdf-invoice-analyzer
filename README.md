@@ -222,3 +222,21 @@ JSON response: invoice_number, vendor_name, total_amount, due_date, category, pr
 - Add authentication and role-based access
 - Expand CI pipeline (e.g. GitHub Actions running `pytest`)
 
+## Quality Checklist
+
+- [x] FastAPI backend implemented
+- [x] `POST /analyze-invoice-text` endpoint working
+- [x] Real OpenAI API integration added
+- [x] Extracted invoice text supported through JSON input
+- [x] Swagger UI tested successfully
+- [x] Screenshot added to README
+- [x] API usage examples included
+- [x] Automated tests added with pytest
+- [x] OpenAI calls mocked in tests
+- [x] GitHub Actions CI added
+- [x] Environment variables handled with `.env`
+- [x] `.env` excluded from GitHub
+- [x] Architecture documented
+- [x] Limitations documented
+- [x] Project pushed to GitHub
+
