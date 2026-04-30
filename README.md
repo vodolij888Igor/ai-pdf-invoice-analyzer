@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project is a portfolio-ready FastAPI backend that accepts extracted invoice text and returns structured invoice analysis.  
+This project is a portfolio-ready FastAPI backend that accepts extracted invoice text and returns structured invoice analysis using the **OpenAI API** (real LLM calls, not placeholder regex).  
 It demonstrates backend API design, input/output validation, and AI-ready service architecture for automation workflows.
 
 ## Business Use Case
@@ -21,6 +21,8 @@ This API standardizes invoice data into predictable fields so downstream systems
 - FastAPI
 - Pydantic
 - Uvicorn
+- OpenAI Python SDK
+- python-dotenv
 
 ## Project Structure
 
@@ -54,11 +56,13 @@ This API standardizes invoice data into predictable fields so downstream systems
    pip install -r requirements.txt
    ```
 
-3. (Optional) Copy environment template:
+3. Copy the environment template and set your OpenAI key:
 
    ```bash
    copy .env.example .env
    ```
+
+   Edit `.env` and set `OPENAI_API_KEY` to a valid key. Without it, `POST /analyze-invoice-text` returns **503** with a clear error message.
 
 4. Run the API:
 
@@ -75,7 +79,7 @@ This API standardizes invoice data into predictable fields so downstream systems
 
 ### `POST /analyze-invoice-text`
 
-Accepts simulated extracted invoice text and returns structured invoice analysis.
+Accepts simulated extracted invoice text and returns structured invoice analysis produced by OpenAI. If the OpenAI API fails, the server returns **502** with a clear error detail.
 
 ### Sample Request
 
@@ -112,15 +116,14 @@ The screenshot below shows a successful POST /analyze-invoice-text request in Fa
 
 ## Current Limitations
 
-- Uses placeholder regex-based logic (no real LLM integration yet)
+- Requires a valid `OPENAI_API_KEY` (no local/offline model)
 - No PDF upload endpoint yet
 - No real PDF text extraction pipeline yet
-- Currency is currently defaulted to USD
-- Category and priority are based on simple heuristics
+- Category and priority are guided by the model and normalized to allowed values when needed
 
 ## Future Improvements
 
-- Integrate real LLM analysis (OpenAI or Azure OpenAI)
+- Optional Azure OpenAI or multi-provider support
 - Add PDF upload support and extraction layer
 - Add OCR support for scanned invoices
 - Store results in a database (PostgreSQL)

@@ -1,8 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from app.schemas.invoice_schema import InvoiceAnalysisRequest, InvoiceAnalysisResponse
-from app.services.invoice_service import analyze_invoice_text
-
+from app.services.invoice_service import (
+    InvoiceAnalysisConfigError,
+    InvoiceAnalysisOpenAIError,
+    analyze_invoice_text,
+)
 
 app = FastAPI(
     title="AI PDF / Invoice Analyzer API",
@@ -26,8 +29,12 @@ def analyze_invoice(payload: InvoiceAnalysisRequest) -> InvoiceAnalysisResponse:
     """
     Analyze extracted invoice text and return normalized structured fields.
     """
-
-    return analyze_invoice_text(
-        document_name=payload.document_name,
-        invoice_text=payload.invoice_text,
-    )
+    try:
+        return analyze_invoice_text(
+            document_name=payload.document_name,
+            invoice_text=payload.invoice_text,
+        )
+    except InvoiceAnalysisConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except InvoiceAnalysisOpenAIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

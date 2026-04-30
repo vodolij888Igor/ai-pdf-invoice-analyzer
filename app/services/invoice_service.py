@@ -1,66 +1,145 @@
-import re
+import json
+import os
+from typing import Any
+
+from dotenv import load_dotenv
+from openai import OpenAI, OpenAIError
 
 from app.schemas.invoice_schema import InvoiceAnalysisResponse
+
+# Load .env once when this module is imported (safe for uvicorn reload workers).
+load_dotenv()
+
+ALLOWED_CATEGORIES = frozenset(
+    {
+        "office_supplies",
+        "software",
+        "contractor_services",
+        "utilities",
+        "shipping",
+        "marketing",
+        "travel",
+        "other",
+    }
+)
+ALLOWED_PRIORITIES = frozenset({"low", "medium", "high"})
+
+
+class InvoiceAnalysisConfigError(Exception):
+    """Raised when required configuration is missing (maps to HTTP 503)."""
+
+
+class InvoiceAnalysisOpenAIError(Exception):
+    """Raised when the OpenAI API call fails (maps to HTTP 502)."""
+
+
+def _normalize_category(value: str) -> str:
+    cleaned = value.strip().lower().replace(" ", "_").replace("-", "_")
+    if cleaned in ALLOWED_CATEGORIES:
+        return cleaned
+    aliases = {
+        "software_services": "software",
+        "it": "software",
+        "saas": "software",
+        "freight": "shipping",
+        "logistics": "shipping",
+    }
+    return aliases.get(cleaned, "other")
+
+
+def _normalize_priority(value: str) -> str:
+    cleaned = value.strip().lower()
+    if cleaned in ALLOWED_PRIORITIES:
+        return cleaned
+    return "medium"
+
+
+def _build_messages(document_name: str, invoice_text: str) -> list[dict[str, str]]:
+    system = (
+        "You are an invoice analysis assistant. Extract structured data from the invoice text. "
+        "Respond with a single JSON object only (no markdown fences). "
+        "Use these exact keys: invoice_number, vendor_name, customer_name, total_amount, "
+        "currency, due_date, category, priority, summary, recommended_action.\n\n"
+        "Rules:\n"
+        "- total_amount: numeric only (no currency symbols).\n"
+        "- currency: ISO-like code (e.g. USD, EUR); infer from text if possible.\n"
+        "- due_date: YYYY-MM-DD if known, else a short string like N/A or Unknown.\n"
+        "- category must be exactly one of: office_supplies, software, contractor_services, "
+        "utilities, shipping, marketing, travel, other.\n"
+        "- priority must be exactly one of: low, medium, high (use amount and urgency cues).\n"
+        "- summary: one concise sentence.\n"
+        "- recommended_action: one actionable sentence for accounts payable.\n"
+    )
+    user = f"Document name: {document_name}\n\nInvoice text:\n{invoice_text}"
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+
+
+def _parse_openai_json(content: str) -> dict[str, Any]:
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise InvoiceAnalysisOpenAIError(
+            "OpenAI returned invalid JSON; cannot complete invoice analysis."
+        ) from exc
 
 
 def analyze_invoice_text(document_name: str, invoice_text: str) -> InvoiceAnalysisResponse:
     """
-    Placeholder invoice analysis logic.
+    Analyze invoice text using OpenAI and return a validated structured response.
 
-    This function intentionally uses deterministic pattern matching for the first
-    portfolio version. Later, you can replace this with an LLM-backed service.
+    Raises InvoiceAnalysisConfigError if OPENAI_API_KEY is not set.
+    Raises InvoiceAnalysisOpenAIError if the OpenAI request fails or output is unusable.
     """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or not api_key.strip():
+        raise InvoiceAnalysisConfigError(
+            "Invoice analysis is unavailable: OPENAI_API_KEY is not set. "
+            "Add it to your environment or .env file."
+        )
 
-    # Simple regex helpers to keep the logic readable and easy to upgrade.
-    invoice_number_match = re.search(r"Invoice\s*#\s*([A-Za-z0-9\-]+)", invoice_text, re.IGNORECASE)
-    vendor_match = re.search(r"Vendor:\s*([^\.]+)", invoice_text, re.IGNORECASE)
-    customer_match = re.search(r"Customer:\s*([^\.]+)", invoice_text, re.IGNORECASE)
-    total_match = re.search(r"Total:\s*\$?([0-9,]+(?:\.[0-9]{1,2})?)", invoice_text, re.IGNORECASE)
-    due_date_match = re.search(r"Due\s*date:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})", invoice_text, re.IGNORECASE)
-    items_match = re.search(r"Items:\s*([^\.]+)", invoice_text, re.IGNORECASE)
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    client = OpenAI(api_key=api_key.strip())
 
-    invoice_number = invoice_number_match.group(1).strip() if invoice_number_match else "UNKNOWN"
-    vendor_name = vendor_match.group(1).strip() if vendor_match else "Unknown Vendor"
-    customer_name = customer_match.group(1).strip() if customer_match else "Unknown Customer"
-    total_amount = float(total_match.group(1).replace(",", "")) if total_match else 0.0
-    due_date = due_date_match.group(1) if due_date_match else "N/A"
-    items_text = items_match.group(1).strip().lower() if items_match else ""
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            messages=_build_messages(document_name, invoice_text),
+            response_format={"type": "json_object"},
+            temperature=0.2,
+        )
+    except OpenAIError as exc:
+        raise InvoiceAnalysisOpenAIError(
+            "OpenAI request failed; invoice analysis could not be completed. "
+            "Please try again later."
+        ) from exc
 
-    # Basic category and priority heuristics for demo purposes.
-    if any(keyword in items_text for keyword in ["chair", "desk", "office", "stationery", "supply"]):
-        category = "office_supplies"
-    elif any(keyword in items_text for keyword in ["software", "subscription", "license"]):
-        category = "software_services"
-    else:
-        category = "general_expense"
+    choice = completion.choices[0] if completion.choices else None
+    if not choice or not choice.message or not choice.message.content:
+        raise InvoiceAnalysisOpenAIError(
+            "OpenAI returned an empty response; invoice analysis could not be completed."
+        )
 
-    if total_amount >= 5000:
-        priority = "high"
-    elif total_amount >= 1000:
-        priority = "medium"
-    else:
-        priority = "low"
+    raw = _parse_openai_json(choice.message.content.strip())
 
-    summary = (
-        f"Invoice from {vendor_name} to {customer_name} "
-        f"for {items_match.group(1).strip() if items_match else 'listed items'}."
-    )
-    recommended_action = (
-        "Review and schedule payment before the due date."
-        if due_date != "N/A"
-        else "Review invoice details and assign a due date before payment scheduling."
-    )
-
-    return InvoiceAnalysisResponse(
-        document_name=document_name,
-        invoice_number=invoice_number,
-        vendor_name=vendor_name,
-        customer_name=customer_name,
-        total_amount=total_amount,
-        currency="USD",
-        due_date=due_date,
-        category=category,
-        priority=priority,
-        summary=summary,
-        recommended_action=recommended_action,
-    )
+    try:
+        return InvoiceAnalysisResponse(
+            document_name=document_name,
+            invoice_number=str(raw.get("invoice_number", "")).strip() or "UNKNOWN",
+            vendor_name=str(raw.get("vendor_name", "")).strip() or "Unknown Vendor",
+            customer_name=str(raw.get("customer_name", "")).strip() or "Unknown Customer",
+            total_amount=float(raw.get("total_amount", 0) or 0),
+            currency=str(raw.get("currency", "USD")).strip() or "USD",
+            due_date=str(raw.get("due_date", "N/A")).strip() or "N/A",
+            category=_normalize_category(str(raw.get("category", "other"))),
+            priority=_normalize_priority(str(raw.get("priority", "medium"))),
+            summary=str(raw.get("summary", "")).strip() or "No summary available.",
+            recommended_action=str(raw.get("recommended_action", "")).strip()
+            or "Review the invoice and take appropriate action.",
+        )
+    except (TypeError, ValueError) as exc:
+        raise InvoiceAnalysisOpenAIError(
+            "OpenAI returned data that could not be mapped to the invoice schema."
+        ) from exc
