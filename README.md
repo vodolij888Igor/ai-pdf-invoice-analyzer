@@ -1,5 +1,7 @@
 # AI PDF / Invoice Analyzer API
 
+[![Tests](https://github.com/vodolij888Igor/ai-pdf-invoice-analyzer/actions/workflows/tests.yml/badge.svg)](https://github.com/vodolij888Igor/ai-pdf-invoice-analyzer/actions/workflows/tests.yml)
+
 ## Project Overview
 
 This project is a portfolio-ready FastAPI backend that accepts extracted invoice text and returns structured invoice analysis using the **OpenAI API** (real LLM calls, not placeholder regex).  
