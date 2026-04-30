@@ -23,6 +23,16 @@ This API standardizes invoice data into predictable fields so downstream systems
 - Uvicorn
 - OpenAI Python SDK
 - python-dotenv
+- pytest, httpx (automated tests)
+
+## Running Tests
+
+Tests mock the OpenAI client and do not call the real API (safe without a key).
+
+```bash
+pip install -r requirements.txt
+pytest
+```
 
 ## Project Structure
 
@@ -34,8 +44,12 @@ This API standardizes invoice data into predictable fields so downstream systems
 │   │   └── invoice_schema.py
 │   └── services/
 │       └── invoice_service.py
+├── tests/
+│   ├── conftest.py
+│   └── test_analyze_invoice_text.py
 ├── .env.example
 ├── .gitignore
+├── pytest.ini
 ├── README.md
 └── requirements.txt
 ```
@@ -128,5 +142,5 @@ The screenshot below shows a successful POST /analyze-invoice-text request in Fa
 - Add OCR support for scanned invoices
 - Store results in a database (PostgreSQL)
 - Add authentication and role-based access
-- Add unit/integration tests and CI pipeline
+- Expand CI pipeline (e.g. GitHub Actions running `pytest`)
 
