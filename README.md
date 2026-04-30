@@ -104,6 +104,12 @@ Accepts simulated extracted invoice text and returns structured invoice analysis
 }
 ```
 
+## Screenshot
+
+The screenshot below shows a successful POST /analyze-invoice-text request in FastAPI Swagger UI with a 200 response.
+
+![Swagger UI successful invoice analysis response](docs/images/swagger-invoice-analysis-code-200.png)
+
 ## Current Limitations
 
 - Uses placeholder regex-based logic (no real LLM integration yet)
