@@ -213,6 +213,30 @@ JSON response: invoice_number, vendor_name, total_amount, due_date, category, pr
 - Category and priority are guided by the model and normalized to allowed values when needed.
 - Future versions could add PDF upload, OCR/text extraction, database storage, authentication, deployment, scheduled invoice processing, and a frontend dashboard.
 
+## Business Value
+
+This project shows how **invoice and PDF-derived business text** can be analyzed automatically with AI to cut repetitive manual review, surface **payment-critical details** (parties, amounts, due dates), and turn **unstructured invoice text** into **structured, actionable output** for downstream workflows.
+
+The same pattern can extend to teams that handle vendor invoices, receipts, payment requests, finance documents, purchase orders, contractor bills, or general operations paperwork—where consistent extraction and triage matter more than re-reading every document by hand.
+
+## Example Use Cases
+
+- Vendor invoice analysis and payment preparation
+- Extracting invoice numbers, totals, due dates, and vendor names
+- Prioritizing urgent or high-value invoices
+- Categorizing invoices by business expense type
+- Preparing invoice data before import into accounting or ERP systems
+- Reviewing contractor bills or service invoices
+- Supporting finance teams with faster document triage
+
+## Future PDF Integration Plan
+
+**Today:** the API accepts **already-extracted invoice text** as JSON—simulating what you would obtain after a PDF or OCR step elsewhere.
+
+**Next steps (not implemented yet):** a future version could accept **direct PDF upload**, run a **PDF text extraction or OCR layer** on the server, then pass the extracted text to **OpenAI** for the same style of structured fields.
+
+**Possible response extensions** later include metadata such as `processed_at`, alongside existing fields like `invoice_number`, `vendor_name`, `customer_name`, `total_amount`, `currency`, `due_date`, `category`, `priority`, and `recommended_action`. Longer term, results could be **persisted in a database** and surfaced through a **frontend dashboard**—still out of scope for this repository’s current scope.
+
 ## Future Improvements
 
 - Optional Azure OpenAI or multi-provider support
