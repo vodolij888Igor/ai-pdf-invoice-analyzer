@@ -1,5 +1,7 @@
 # AI PDF / Invoice Analyzer API
 
+Structured FastAPI service that turns extracted invoice text into AI-generated invoice summaries, structured payment fields, priorities, and recommended actions.
+
 [![Tests](https://github.com/vodolij888Igor/ai-pdf-invoice-analyzer/actions/workflows/tests.yml/badge.svg)](https://github.com/vodolij888Igor/ai-pdf-invoice-analyzer/actions/workflows/tests.yml)
 
 ## Project Overview
